@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>沖繩自駕 2026 - V14 Final</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@500&family=Mochi+Pop+One&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --cream: #FCF8F2; --butter: #F9EBC8; --text: #5F5449; --accent: #FFAD60; }
+        body { font-family: 'Kiwi Maru', 'Noto Sans TC', sans-serif; background: var(--cream); color: var(--text); padding-bottom: 110px; }
+        .title-outline { font-family: 'Mochi Pop One', sans-serif; font-size: 2.2rem; color: transparent; -webkit-text-stroke: 1.5px var(--accent); }
+        .cream-card { background: white; border-radius: 20px; box-shadow: 0 4px 15px rgba(220, 210, 190, 0.05); }
+        .flight-ticket { 
+            background: white; border-radius: 15px; border: 1.5px solid #EEE; position: relative; overflow: hidden;
+            background-image: radial-gradient(circle at 0 50%, transparent 10px, white 11px), radial-gradient(circle at 100% 50%, transparent 10px, white 11px);
+        }
+        .flight-ticket::before { content: ''; position: absolute; left: 28%; top: 0; bottom: 0; border-left: 1.5px dashed #F0F0F0; }
+        .nav-pill { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+        .tab-active { background: var(--butter); color: #8B7355; transform: scale(1.1); font-weight: bold; }
+        .drive-divider { border-left: 2px dashed #FFD8A8; margin-left: 35px; padding: 5px 0 5px 20px; font-size: 11px; color: var(--accent); font-weight: bold; }
+        input, textarea { background: transparent !important; border: none !important; outline: none !important; width: 100%; }
+        .modal-overlay { background: rgba(0,0,0,0.6); position: fixed; inset: 0; z-index: 500; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .icon-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="max-w-md mx-auto">
+    <div id="app">
+        <!-- 標題與航班 -->
+        <header class="p-6 text-center">
+            <h1 class="title-outline">OKINAWA 2026</h1>
+            <div class="space-y-3 mt-4">
+                <div class="flight-ticket p-4 flex shadow-sm">
+                    <div class="w-1/4 flex flex-col justify-center items-center text-orange-400">
+                        <p class="text-[10px] font-bold uppercase">5/27 Dep</p>
+                        <p class="text-[9px] font-mono font-bold">IT 288</p>
+                    </div>
+                    <div class="flex-1 pl-8 flex justify-between items-center text-sm font-bold">
+                        <div class="text-center">KHH<br>10:10</div>
+                        <i class="fa-solid fa-plane text-orange-200"></i>
+                        <div class="text-center">OKA<br>13:00</div>
+                    </div>
+                </div>
+                <div class="flight-ticket p-4 flex shadow-sm border-blue-50">
+                    <div class="w-1/4 flex flex-col justify-center items-center text-blue-400">
+                        <p class="text-[10px] font-bold uppercase">5/30 Ret</p>
+                        <p class="text-[9px] font-mono font-bold">IT 289</p>
+                    </div>
+                    <div class="flex-1 pl-8 flex justify-between items-center text-sm font-bold">
+                        <div class="text-center">OKA<br>14:00</div>
+                        <i class="fa-solid fa-plane text-blue-200 rotate-180"></i>
+                        <div class="text-center">KHH<br>14:55</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主導覽 -->
+        <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 flex gap-1 p-2 nav-pill rounded-[30px] z-[150] w-[92%] justify-around shadow-2xl">
+            <button v-for="t in tabs" @click="currentTab = t.id" :class="{'tab-active': currentTab === t.id}" class="flex-1 py-3 rounded-[25px] transition-all">
+                <i :class="t.icon"></i>
+            </button>
+        </nav>
+
+        <main class="px-5">
+            <!-- 1. 行程分頁 -->
+            <div v-if="currentTab === 'itinerary'" class="space-y-4">
+                <div class="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                    <button v-for="d in days" @click="selectedDate = d" :class="selectedDate === d ? 'bg-orange-400 text-white shadow-md' : 'bg-white text-gray-400'" class="px-5 py-2 rounded-xl text-xs font-bold shrink-0 transition-all">{{ d }}</button>
+                </div>
+
+                <div v-for="(item, idx) in itinData[selectedDate]" :key="idx">
+                    <div class="cream-card p-4 flex items-center gap-4">
+                        <div class="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-400 shrink-0">
+                            <i :class="item.icon || 'fa-solid fa-location-dot'"></i>
+                        </div>
+                        <div class="flex-1 cursor-pointer" @click="goNav(item.name)">
+                            <h3 class="font-bold text-sm">{{ item.name }} <i class="fa-solid fa-location-arrow text-[8px] text-blue-300 ml-1"></i></h3>
+                            <p class="text-[10px] text-gray-400 font-mono">{{ item.time }}</p>
+                        </div>
+                        <div class="flex gap-3 text-gray-200">
+                            <button @click="openEdit(item, idx)"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
+                            <button @click="deleteItem(idx)"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                        </div>
+                    </div>
+                    <div v-if="item.drive" class="drive-divider"><i class="fa-solid fa-car-side mr-1"></i> 車程 {{ item.drive }}</div>
+                </div>
+                <button @click="openAdd" class="w-full py-4 border-2 border-dashed border-orange-200 rounded-2xl text-orange-300 text-xs font-bold mt-4">+ 新增自訂行程</button>
+            </div>
+
+            <!-- 2. 預訂資訊 -->
+            <div v-if="currentTab === 'booking'" class="space-y-4">
+                <div v-for="b in bookings" class="cream-card p-5 border-l-4 border-orange-400">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-[9px] font-black bg-orange-50 text-orange-400 px-2 py-0.5 rounded">{{ b.type }}</span>
+                        <p class="text-[10px] font-mono font-bold text-blue-500">{{ b.code }}</p>
+                    </div>
+                    <h3 class="font-bold text-sm">{{ b.title }}</h3>
+                    <div class="flex justify-between mt-3 text-[10px] text-gray-400 font-bold uppercase">
+                        <span><i class="fa-regular fa-clock mr-1"></i> {{ b.time }}</span>
+                        <span><i class="fa-regular fa-user mr-1"></i> {{ b.user }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. 常用日語 -->
+            <div v-if="currentTab === 'language'" class="space-y-8">
+                <div v-for="(list, cat) in phrases" :key="cat">
+                    <h3 class="text-[11px] font-black text-orange-400 mb-3 tracking-widest uppercase">● {{ cat }}</h3>
+                    <div class="grid gap-2">
+                        <div v-for="(p, idx) in list" class="cream-card p-3 flex justify-between items-center group">
+                            <div class="flex-1">
+                                <input v-model="p.tw" class="font-bold text-sm !text-gray-700">
+                                <input v-model="p.jp" class="text-[10px] !text-gray-400 mt-1">
+                            </div>
+                            <button @click="list.splice(idx, 1)" class="text-gray-200 opacity-0 group-hover:opacity-100"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </div>
+                    <button @click="list.push({tw:'新句子', jp:'新(あたら)しい文(ぶん)'})" class="w-full mt-2 text-[10px] text-orange-200">+ 新增語句</button>
+                </div>
+            </div>
+
+            <!-- 4. 購物清單 -->
+            <div v-if="currentTab === 'shopping'" class="space-y-4">
+                <div class="cream-card p-5 space-y-3">
+                    <input v-model="newShop.name" placeholder="品名" class="!bg-gray-50 !p-3 !rounded-xl text-sm">
+                    <label class="flex items-center justify-center bg-gray-50 p-4 rounded-xl border-2 border-dashed border-gray-200 cursor-pointer">
+                        <span class="text-xs text-gray-400"><i class="fa-solid fa-camera mr-2"></i>{{ newShop.img ? '照片已就緒' : '從相簿上傳照片' }}</span>
+                        <input type="file" @change="handleUpload" class="hidden" accept="image/*">
+                    </label>
+                    <button @click="addShop" class="w-full bg-orange-400 text-white py-3 rounded-xl font-bold">加入清單</button>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div v-for="(item, idx) in shoppingList" :key="idx" class="cream-card p-2 relative shadow-sm">
+                        <img v-if="item.img" :src="item.img" class="w-full h-32 object-cover rounded-xl mb-2">
+                        <p class="text-xs font-bold px-1 text-center truncate">{{ item.name }}</p>
+                        <button @click="shoppingList.splice(idx, 1)" class="absolute top-2 right-2 bg-black/50 text-white w-6 h-6 rounded-full text-[10px]"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. 翻譯 (跳轉功能) -->
+            <div v-if="currentTab === 'translate'" class="space-y-4">
+                <div class="cream-card p-6 text-center">
+                    <div class="text-[10px] font-black text-blue-300 mb-4 tracking-tighter uppercase">Google Translate</div>
+                    <textarea v-model="transIn" rows="4" placeholder="請在此輸入要翻譯的中文內容..." class="!bg-gray-50 !p-4 !rounded-2xl italic text-center text-sm mb-4"></textarea>
+                    <button @click="openGoogleTrans" class="w-full bg-blue-500 text-white py-4 rounded-2xl font-bold shadow-lg active:scale-95 transition-all">
+                        <i class="fa-brands fa-google mr-2"></i>開啟 Google 翻譯
+                    </button>
+                    <p class="mt-4 text-[10px] text-gray-300">點擊後將自動跳轉至瀏覽器並自動填入內容</p>
+                </div>
+            </div>
+
+            <!-- 6. 行李清單 -->
+            <div v-if="currentTab === 'luggage'" class="space-y-4">
+                <div v-for="(list, cat) in luggages" class="cream-card p-5 shadow-sm">
+                    <h3 class="font-bold text-xs text-blue-400 mb-4 uppercase tracking-widest">● {{ cat }}</h3>
+                    <div v-for="(item, idx) in list" class="flex items-center gap-3 mb-4 group">
+                        <i @click="item.check = !item.check" :class="item.check ? 'fa-solid fa-square-check text-green-400' : 'fa-regular fa-square text-gray-200'" class="text-lg"></i>
+                        <input v-model="item.name" class="text-sm font-medium flex-1" :class="{'opacity-30 line-through': item.check}">
+                        <button @click="list.splice(idx, 1)" class="text-red-100 opacity-0 group-hover:opacity-100"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                    </div>
+                    <button @click="list.push({name:'新項目', check:false})" class="mt-2 text-[10px] text-gray-300 w-full">+ 新增行李項目</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- 行程新增/編輯彈窗 (20個Icon) -->
+        <div v-if="showModal" class="modal-overlay">
+            <div class="bg-white p-6 rounded-[30px] w-full max-h-[80vh] overflow-y-auto space-y-4 shadow-2xl no-scrollbar">
+                <h3 class="font-bold text-center text-gray-400 text-xs tracking-widest">編輯行程細節</h3>
+                
+                <div class="icon-grid p-2 bg-gray-50 rounded-2xl">
+                    <button v-for="icon in iconLibrary" @click="tempItem.icon = icon" :class="tempItem.icon === icon ? 'bg-orange-400 text-white' : 'bg-white text-gray-300 border border-gray-100'" class="w-10 h-10 rounded-xl text-sm transition-all">
+                        <i :class="icon"></i>
+                    </button>
+                </div>
+
+                <input v-model="tempItem.name" placeholder="地點名稱" class="!bg-gray-50 !p-4 !rounded-2xl text-sm">
+                <input v-model="tempItem.time" placeholder="預計時間 (如 14:00)" class="!bg-gray-50 !p-4 !rounded-2xl text-sm font-mono">
+                <input v-model="tempItem.drive" placeholder="後續車程 (如 30分)" class="!bg-gray-50 !p-4 !rounded-2xl text-sm">
+                
+                <div class="flex gap-2 pt-2">
+                    <button @click="showModal = false" class="flex-1 py-4 text-gray-400 font-bold">取消</button>
+                    <button @click="saveItem" class="flex-1 py-4 bg-orange-400 text-white rounded-2xl font-bold shadow-lg">確認儲存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed } = Vue;
+        createApp({
+            setup() {
+                const currentTab = ref('itinerary'), selectedDate = ref('5/27');
+                const showModal = ref(false), editIdx = ref(-1);
+                const transIn = ref(''), newShop = ref({name:'', img:''});
+                const tempItem = ref({name:'', time:'', drive:'', icon:'fa-solid fa-location-dot'});
+                const shoppingList = ref([]);
+
+                const days = ['5/27', '5/28', '5/29', '5/30'];
+                const tabs = [
+                    {id:'itinerary', icon:'fa-solid fa-calendar-day'}, 
+                    {id:'booking', icon:'fa-solid fa-receipt'}, 
+                    {id:'language', icon:'fa-solid fa-comment-sms'}, 
+                    {id:'shopping', icon:'fa-solid fa-cart-shopping'},
+                    {id:'translate', icon:'fa-solid fa-language'},
+                    {id:'luggage', icon:'fa-solid fa-list-check'}
+                ];
+
+                // 20個Icon庫
+                const iconLibrary = [
+                    'fa-solid fa-plane', 'fa-solid fa-car', 'fa-solid fa-utensils', 'fa-solid fa-bag-shopping', 
+                    'fa-solid fa-hotel', 'fa-solid fa-location-dot', 'fa-solid fa-camera', 'fa-solid fa-mug-hot',
+                    'fa-solid fa-burger', 'fa-solid fa-ice-cream', 'fa-solid fa-torii-gate', 'fa-solid fa-fish',
+                    'fa-solid fa-store', 'fa-solid fa-cart-shopping', 'fa-solid fa-umbrella-beach', 'fa-solid fa-sun',
+                    'fa-solid fa-key', 'fa-solid fa-door-open', 'fa-solid fa-fire-burner', 'fa-solid fa-basket-shopping'
+                ];
+
+                const itinData = ref({
+                    '5/27': [
+                        {time:'07:50', name:'抵達小港機場', icon:'fa-solid fa-plane'},
+                        {time:'10:10', name:'飛機起飛 (IT288)', icon:'fa-solid fa-plane-departure'},
+                        {time:'13:00', name:'飛機抵達那霸機場', icon:'fa-solid fa-plane-arrival'},
+                        {time:'14:00', name:'OTS 租車 領車', icon:'fa-solid fa-car', drive:'30分'},
+                        {time:'14:40-15:20', name:'A&W 漢堡用餐', icon:'fa-solid fa-burger', drive:'30分'},
+                        {time:'16:00-16:30', name:'波上宮參拜', icon:'fa-solid fa-torii-gate', drive:'15分'},
+                        {time:'16:50-17:20', name:'OKINAWA SHINBOO', icon:'fa-solid fa-ice-cream', drive:'20分'},
+                        {time:'17:45', name:'SAN-A PARCO CITY', icon:'fa-solid fa-bag-shopping', drive:'65分'},
+                        {time:'晚上', name:'暖暮拉麵', icon:'fa-solid fa-bowl-food'},
+                        {time:'晚上', name:'5/27 民宿入住', icon:'fa-solid fa-key'}
+                    ],
+                    '5/28': [
+                        {time:'10:00', name:'民宿退房', icon:'fa-solid fa-door-open', drive:'20分'},
+                        {time:'11:30-12:30', name:'百年古家 阿古豬', icon:'fa-solid fa-utensils', drive:'34分'},
+                        {time:'13:10-15:30', name:'美麗海水族館', icon:'fa-solid fa-fish', drive:'22分'},
+                        {time:'15:55-16:10', name:'SHINMEI COFFEE', icon:'fa-solid fa-mug-hot', drive:'1小時25分'},
+                        {time:'17:40-18:50', name:'美國村逛街', icon:'fa-solid fa-store'},
+                        {time:'19:00-20:30', name:'琉球的牛 北谷店', icon:'fa-solid fa-fire-burner', drive:'40分'},
+                        {time:'21:10', name:'TOKYU STAY 入住', icon:'fa-solid fa-hotel'}
+                    ],
+                    '5/29': [
+                        {time:'10:30', name:'出門', icon:'fa-solid fa-sun', drive:'20分'},
+                        {time:'10:50-11:50', name:'識名園', icon:'fa-solid fa-tree', drive:'20分'},
+                        {time:'12:30-13:50', name:'風林火山 魚魚午餐', icon:'fa-solid fa-shrimp', drive:'30分'},
+                        {time:'14:30-16:30', name:'ASHIBINAA OUTLET', icon:'fa-solid fa-tags', drive:'20分'},
+                        {time:'17:00-18:00', name:'浜寿司 那霸小祿店', icon:'fa-solid fa-fish', drive:'20分'},
+                        {time:'18:30', name:'國際通 Shopping', icon:'fa-solid fa-basket-shopping'}
+                    ],
+                    '5/30': [
+                        {time:'09:00', name:'飯店退房', icon:'fa-solid fa-suitcase-rolling', drive:'30分'},
+                        {time:'10:10-10:30', name:'OTS 還車', icon:'fa-solid fa-car-side', drive:'25分'},
+                        {time:'11:00', name:'那霸機場', icon:'fa-solid fa-plane'}
+                    ]
+                });
+
+                const bookings = [
+                    {type:'🍽️ 餐廳', title:'百年古家 阿古豬', code:'9QV3HR', time:'5/28 11:30', user:'WANG WEIHAN'},
+                    {type:'🍽️ 餐廳', title:'琉球的牛 北谷店', code:'5JYD2C', time:'5/28 19:00', user:'WANG WEIHAN'},
+                    {type:'🏨 住宿', title:'TOKYU STAY 那霸', code:'TC6B9C2BCB149', time:'5/28 Check-in', user:'WANG WEIHAN'}
+                ];
+
+                const phrases = ref({
+                    '🍽️ 餐廳': [
+                        {tw:'有中文菜單嗎？', jp:'中国語(ちゅうごくご)のメニューはありますか？'},
+                        {tw:'我要結帳', jp:'お会計(かいけい)をお願(ねが)いします'},
+                        {tw:'我有預約', jp:'予約(よやく)をしています'},
+                        {tw:'我要點這個', jp:'これをください'},
+                        {tw:'非常好吃', jp:'とても美味(おい)しかったです'},
+                        {tw:'推薦菜色是什麼？', jp:'おすすめは何(なん)ですか？'},
+                        {tw:'不加芥末', jp:'わさび抜(ぬ)きでお願(ねが)いします'},
+                        {tw:'可以外帶嗎', jp:'持(も)ち帰(かえ)りはできますか？'},
+                        {tw:'請給我水', jp:'お水(みず)をお願(ねが)いします'},
+                        {tw:'附近有廁所嗎？', jp:'トイレはどこですか？'}
+                    ],
+                    '🚗 交通': [
+                        {tw:'請加滿油(Regular)', jp:'レギュラー満(まん)タンでお願(ねが)いします'},
+                        {tw:'這裡能停車嗎？', jp:'ここに駐車(ちゅうしゃ)できますか？'},
+                        {tw:'我要還車', jp:'車(くるま)を返却(へんきゃく)したいです'},
+                        {tw:'發生事故了', jp:'事故(じこ)が起(お)きました'},
+                        {tw:'導航怎麼用？', jp:'ナビはどう使(つか)いますか？'},
+                        {tw:'加油站在哪裡？', jp:'ガソリンスタンドはどこですか？'},
+                        {tw:'去機場要多久？', jp:'空港(くうこう)までどのくらいですか？'},
+                        {tw:'請給我收據', jp:'レシートをください'},
+                        {tw:'這是我的執照', jp:'これが免許証(めんきょしょう)です'},
+                        {tw:'附近有停車場嗎', jp:'駐車場(ちゅうしゃじょう)はありますか？'}
+                    ],
+                    '🛍️ 購物': [
+                        {tw:'可以退稅嗎？', jp:'免税(めんぜい)できますか？'},
+                        {tw:'多少錢？', jp:'いくらですか？'},
+                        {tw:'有新的嗎？', jp:'新(あたら)しいのはありますか？'},
+                        {tw:'可以試穿嗎？', jp:'試着(しちゃく)できますか？'},
+                        {tw:'可以刷卡嗎？', jp:'カードは使(つか)えますか？'},
+                        {tw:'不用袋子', jp:'袋(ふくろ)はいりません'},
+                        {tw:'我在找這個', jp:'これを探(さが)しています'},
+                        {tw:'請分開裝', jp:'別々(べつべつ)に包(つつ)んでください'},
+                        {tw:'有其他顏色嗎？', jp:'他(ほか)の色(いろ)はありますか？'},
+                        {tw:'太貴了', jp:'ちょっと高(たか)いです'}
+                    ],
+                    '🏨 住宿': [
+                        {tw:'辦理入住', jp:'チェックインをお願(ねが)いします'},
+                        {tw:'寄放行李', jp:'荷物(にもつ)を預(あず)かってもらえますか？'},
+                        {tw:'WiFi密碼是？', jp:'WiFiのパスワードは何(なん)ですか？'},
+                        {tw:'退房', jp:'チェックアウトをお願(ねが)いします'},
+                        {tw:'冷氣壞了', jp:'エアコンが壊(こわ)れています'},
+                        {tw:'幫我叫計程車', jp:'タクシーを呼(よ)んでください'},
+                        {tw:'包含早餐嗎？', jp:'朝食(ちょうしゃく)は付(つ)いていますか？'},
+                        {tw:'附近有超商嗎？', jp:'近(ちか)くにコンビニはありますか？'},
+                        {tw:'熱水不出來', jp:'お湯(ゆ)が出(で)ません'},
+                        {tw:'請給我毛巾', jp:'タオルをください'}
+                    ]
+                });
+
+                const luggages = ref({"🪪 重要": [{name:"護照/日文譯本", check:false}], "🔌 電子": [{name:"行動電源", check:false}], "👕 生活": [{name:"換洗衣物", check:false}]});
+
+                // 核心邏輯
+                const goNav = (name) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' 沖縄')}`, '_blank');
+                const openGoogleTrans = () => {
+                    const url = `https://translate.google.com/?sl=zh-CN&tl=ja&text=${encodeURIComponent(transIn.value)}&op=translate`;
+                    window.open(url, '_blank');
+                };
+                const handleUpload = (e) => {
+                    const file = e.target.files[0];
+                    if(file){
+                        const reader = new FileReader();
+                        reader.onload = (ev) => newShop.value.img = ev.target.result;
+                        reader.readAsDataURL(file);
+                    }
+                };
+                const addShop = () => { if(newShop.value.name) { shoppingList.value.push({...newShop.value}); newShop.value = {name:'', img:''}; } };
+                
+                const deleteItem = (idx) => { if(confirm('確定刪除此行程？')) itinData.value[selectedDate.value].splice(idx, 1); };
+                const openAdd = () => { editIdx.value = -1; tempItem.value = {name:'', time:'', drive:'', icon:'fa-solid fa-location-dot'}; showModal.value = true; };
+                const openEdit = (item, idx) => { editIdx.value = idx; tempItem.value = {...item}; showModal.value = true; };
+                const saveItem = () => {
+                    if(editIdx.value === -1) itinData.value[selectedDate.value].push({...tempItem.value});
+                    else itinData.value[selectedDate.value][editIdx.value] = {...tempItem.value};
+                    showModal.value = false;
+                };
+
+                return { currentTab, selectedDate, days, tabs, itinData, phrases, luggages, bookings, shoppingList, newShop, handleUpload, addShop, transIn, openGoogleTrans, goNav, deleteItem, openAdd, openEdit, saveItem, showModal, tempItem, iconLibrary };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
