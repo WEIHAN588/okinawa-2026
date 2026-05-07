@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>沖繩自駕 2026</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Kiwi+Maru:wght@500&family=Mochi+Pop+One&display=swap" rel="stylesheet">
+    <style>
+        :root { --cream: #FCF8F2; --butter: #F9EBC8; --text: #5F5449; --accent: #FFAD60; }
+        body { font-family: 'Kiwi Maru', 'Noto Sans TC', sans-serif; background: var(--cream); color: var(--text); -webkit-font-smoothing: antialiased; }
+        
+        .title-outline { 
+            font-family: 'Mochi Pop One', sans-serif; 
+            font-size: 3.2rem; 
+            letter-spacing: 2px;
+            color: transparent;
+            -webkit-text-stroke: 2px var(--accent);
+        }
+
+        .cream-card { background: white; border-radius: 30px; box-shadow: 0 8px 25px rgba(220, 210, 190, 0.12); position: relative; }
+        .nav-pill { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); box-shadow: 0 -5px 25px rgba(0,0,0,0.05); }
+        .tab-active { background: var(--butter); color: #8B7355; transform: scale(1.1); }
+        
+        .icon-grid-item { width: 45px; height: 45px; border-radius: 14px; background: #f8f8f8; display: flex; align-items: center; justify-content: center; border: 2px solid transparent; transition: all 0.2s; color: #ccc; cursor: pointer; }
+        .icon-grid-item.active-icon { border-color: var(--accent); background: #FFF5EB; color: var(--accent); transform: scale(1.1); }
+        
+        .travel-time { position: relative; margin: -5px 0 -5px 45px; padding: 10px 0; border-left: 2px dashed #FFD8A8; }
+        input, select, textarea { font-family: 'Noto Sans TC', sans-serif !important; border-radius: 16px !important; background: #FAFAFA !important; border: 1px solid #EEE !important; padding: 12px !important; outline: none; width: 100%; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .animate-slideUp { animation: slideUp 0.3s ease-out; }
+    </style>
+</head>
+<body class="max-w-md mx-auto min-h-screen pb-40">
+    <div id="app">
+        <header class="p-6 pt-12 text-center">
+            <h1 class="title-outline">OKINAWA</h1>
+            <h2 class="font-bold text-lg text-brown-500 tracking-[0.3em] mt-1">沖繩自駕 2026</h2>
+        </header>
+
+        <nav class="fixed bottom-8 left-1/2 -translate-x-1/2 flex gap-1 p-2 nav-pill rounded-[35px] z-[100] w-[94%] max-w-sm justify-around">
+            <button @click="currentTab = 'itinerary'" :class="{'tab-active': currentTab === 'itinerary'}" class="flex-1 py-4 rounded-[28px] transition-all"><i class="fa-solid fa-calendar-day"></i></button>
+            <button @click="currentTab = 'booking'" :class="{'tab-active': currentTab === 'booking'}" class="flex-1 py-4 rounded-[28px] transition-all"><i class="fa-solid fa-file-invoice"></i></button>
+            <button @click="currentTab = 'language'" :class="{'tab-active': currentTab === 'language'}" class="flex-1 py-4 rounded-[28px] transition-all"><i class="fa-solid fa-comment-dots"></i></button>
+            <button @click="currentTab = 'exchange'" :class="{'tab-active': currentTab === 'exchange'}" class="flex-1 py-4 rounded-[28px] transition-all"><i class="fa-solid fa-calculator"></i></button>
+            <button @click="currentTab = 'shopping'" :class="{'tab-active': currentTab === 'shopping'}" class="flex-1 py-4 rounded-[28px] transition-all"><i class="fa-solid fa-basket-shopping"></i></button>
+        </nav>
+
+        <main class="px-6">
+            <!-- 1. 行程表 -->
+            <div v-if="currentTab === 'itinerary'" class="space-y-4">
+                <div class="flex overflow-x-auto gap-3 hide-scrollbar pb-4">
+                    <button v-for="day in days" @click="selectedDate = day.date" 
+                        class="flex-shrink-0 w-16 h-20 rounded-[25px] flex flex-col items-center justify-center bg-white shadow-sm"
+                        :class="selectedDate === day.date ? 'bg-[#F9EBC8] scale-105' : 'opacity-50'">
+                        <span class="text-[10px] font-bold">{{ day.week }}</span><span class="text-xl font-black">{{ day.dayNum }}</span>
+                    </button>
+                </div>
+                <div class="space-y-0">
+                    <template v-for="(item, index) in sortedItinerary" :key="item.id">
+                        <div class="cream-card p-5 border-l-8 border-orange-200">
+                            <button @click="deleteItem(item.id, 'itinerary')" class="absolute top-2 right-2 text-gray-200"><i class="fa-solid fa-circle-xmark"></i></button>
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-xl text-orange-300"><i :class="item.icon"></i></div>
+                                <div><h3 class="font-bold">{{ item.name }}</h3><span class="text-[10px] text-gray-400">{{ item.time }}</span></div>
+                            </div>
+                        </div>
+                        <div v-if="index < sortedItinerary.length - 1 && item.driveTime" class="travel-time">
+                            <div class="ml-4 bg-orange-50/50 px-3 py-1 rounded-full text-[10px] text-orange-400 inline-flex items-center border border-orange-100">
+                                <i class="fa-solid fa-car-side mr-2"></i> 車程 {{ item.driveTime }} 分鐘
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- 2. 預訂頁面 -->
+            <div v-if="currentTab === 'booking'" class="space-y-4">
+                <div v-for="book in bookingList" :key="book.id" class="cream-card p-6 border-2 border-dashed border-orange-50">
+                    <button @click="deleteItem(book.id, 'booking')" class="absolute top-2 right-2 text-gray-200"><i class="fa-solid fa-trash-can"></i></button>
+                    <div class="flex justify-between items-start">
+                        <span class="text-[10px] bg-blue-50 text-blue-400 px-2 py-1 rounded-lg font-bold">{{ book.type }}</span>
+                        <span class="text-[10px] text-gray-400 font-mono">{{ book.dateTime }}</span>
+                    </div>
+                    <h3 class="font-bold text-lg mt-2">{{ book.title }}</h3>
+                    <div class="mt-4 p-3 bg-gray-50 rounded-xl font-mono text-blue-500 text-center break-all text-sm">{{ book.code }}</div>
+                </div>
+                <button @click="showBookingModal = true" class="w-full py-4 border-2 border-dashed border-orange-100 rounded-3xl text-orange-300 font-bold">+ 新增預訂資訊</button>
+            </div>
+
+            <!-- 3. 常用日語 -->
+            <div v-if="currentTab === 'language'" class="space-y-6">
+                <div v-for="(phrases, catName) in groupedPhrases" :key="catName" class="space-y-2">
+                    <h3 class="text-xs font-black text-orange-300 pl-2 border-b border-orange-50 pb-1">{{ catName }}</h3>
+                    <div v-for="p in phrases" class="cream-card p-4 flex justify-between items-center">
+                        <div @click="zoomPhrase = p" class="flex-1">
+                            <p class="font-bold text-sm">{{ p.tw }}</p>
+                            <p class="text-[10px] text-gray-400 whitespace-pre-wrap">{{ p.jp }}</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button @click="openEditLang(p)" class="text-orange-200"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button @click="deleteLanguage(p.id)" class="text-gray-100"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <button @click="showLangModal = true; isEditMode = false; customLang = {cat:'', tw:'', jp:''}" class="w-full py-4 border-2 border-dashed border-orange-100 rounded-3xl text-orange-300 font-bold">+ 新增語句</button>
+            </div>
+
+            <!-- 4. 匯率 (0.2) -->
+            <div v-if="currentTab === 'exchange'" class="cream-card p-10 text-center animate-slideUp">
+                <div class="text-xs text-gray-400 mb-4 font-bold tracking-widest">JPY 換算 TWD (0.2)</div>
+                <input v-model="jpy" type="number" class="w-full text-5xl text-center font-black text-orange-300 mb-4 bg-transparent" placeholder="0">
+                <div class="text-3xl font-bold text-gray-600">NT$ {{ (jpy * 0.2).toFixed(0) }}</div>
+            </div>
+
+            <!-- 5. 購物籃 -->
+            <div v-if="currentTab === 'shopping'" class="space-y-4">
+                <div v-for="shop in shoppingList" :key="shop.id" class="cream-card p-4 flex gap-4 items-center">
+                    <button @click="deleteItem(shop.id, 'shopping')" class="absolute top-2 right-2 text-gray-200"><i class="fa-solid fa-circle-xmark"></i></button>
+                    <div class="w-20 h-20 bg-gray-50 rounded-2xl overflow-hidden flex items-center justify-center border">
+                        <img v-if="shop.img" :src="shop.img" class="w-full h-full object-cover">
+                        <i v-else class="fa-solid fa-bag-shopping text-gray-200 text-2xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm">{{ shop.name }}</h4>
+                        <p class="text-orange-400 font-black">¥ {{ shop.price }}</p>
+                    </div>
+                </div>
+                <button @click="showShopModal = true" class="w-full py-4 border-2 border-dashed border-orange-100 rounded-3xl text-orange-300 font-bold">+ 上傳購物照片</button>
+            </div>
+        </main>
+
+        <!-- 行程新增彈窗 (補完 Icon 庫) -->
+        <div v-if="showModal" class="fixed inset-0 bg-black/40 z-[200] flex items-end">
+            <div class="bg-white w-full rounded-t-[40px] p-8 animate-slideUp">
+                <h3 class="font-bold mb-4 text-center">新增行程</h3>
+                <!-- 圖示庫 -->
+                <div class="grid grid-cols-5 gap-3 mb-6 max-h-32 overflow-y-auto p-2">
+                    <div v-for="ic in iconLib" @click="newItem.icon = ic" 
+                        :class="{'active-icon': newItem.icon === ic}" 
+                        class="icon-grid-item text-lg">
+                        <i :class="ic"></i>
+                    </div>
+                </div>
+                <input v-model="newItem.name" placeholder="景點名稱" class="mb-4">
+                <div class="flex gap-2 mb-6">
+                    <input v-model="newItem.time" type="time" class="flex-1">
+                    <input v-model="newItem.driveTime" placeholder="車程(分)" class="flex-1">
+                </div>
+                <button @click="addItem('itinerary')" class="w-full bg-orange-400 text-white py-4 rounded-3xl font-bold">儲存行程</button>
+                <button @click="showModal = false" class="w-full text-gray-300 mt-4 text-sm">取消</button>
+            </div>
+        </div>
+
+        <!-- 預訂彈窗 -->
+        <div v-if="showBookingModal" class="fixed inset-0 bg-black/40 z-[200] flex items-center p-6">
+            <div class="bg-white w-full rounded-[40px] p-8 animate-slideUp">
+                <h3 class="font-bold mb-4 text-center">新增預訂</h3>
+                <select v-model="newBook.type" class="mb-4">
+                    <option>🚗 租車</option><option>🏨 住宿</option><option>✈️ 航班</option><option>🍽️ 餐廳</option>
+                </select>
+                <input v-model="newBook.dateTime" type="datetime-local" class="mb-4 text-sm">
+                <input v-model="newBook.title" placeholder="項目名稱" class="mb-4">
+                <textarea v-model="newBook.code" placeholder="確認碼或備註" class="mb-6 h-20"></textarea>
+                <div class="flex gap-2">
+                    <button @click="showBookingModal = false" class="flex-1 py-4 border rounded-3xl">取消</button>
+                    <button @click="addItem('booking')" class="flex-1 bg-orange-400 text-white py-4 rounded-3xl font-bold">儲存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 日語彈窗 -->
+        <div v-if="showLangModal" class="fixed inset-0 bg-black/40 z-[200] flex items-center p-6">
+            <div class="bg-white w-full rounded-[40px] p-8 animate-slideUp">
+                <h3 class="font-bold mb-4 text-center">{{ isEditMode ? '編輯日語' : '新增日語' }}</h3>
+                <input v-model="customLang.cat" placeholder="分類" class="mb-4">
+                <input v-model="customLang.tw" placeholder="中文" class="mb-4">
+                <textarea v-model="customLang.jp" placeholder="日文及注音" class="mb-6 h-32"></textarea>
+                <div class="flex gap-2">
+                    <button @click="showLangModal = false" class="flex-1 py-4 border rounded-3xl">取消</button>
+                    <button @click="saveLang" class="flex-1 bg-orange-400 text-white py-4 rounded-3xl font-bold">儲存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 購物彈窗 -->
+        <div v-if="showShopModal" class="fixed inset-0 bg-black/40 z-[200] flex items-end">
+            <div class="bg-white w-full rounded-t-[40px] p-8 animate-slideUp">
+                <div class="flex justify-center mb-4">
+                    <label class="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center overflow-hidden border-2 border-dashed">
+                        <img v-if="newShop.img" :src="newShop.img" class="w-full h-full object-cover">
+                        <i v-else class="fa-solid fa-camera text-gray-300"></i>
+                        <input type="file" class="hidden" accept="image/*" @change="handleFileUpload">
+                    </label>
+                </div>
+                <input v-model="newShop.name" placeholder="商品名稱" class="mb-4">
+                <input v-model="newShop.price" placeholder="價格 (¥)" class="mb-6">
+                <button @click="addItem('shopping')" class="w-full bg-orange-400 text-white py-4 rounded-3xl font-bold">儲存</button>
+                <button @click="showShopModal = false" class="w-full text-gray-300 mt-4 text-sm">取消</button>
+            </div>
+        </div>
+
+        <!-- 放大顯示 -->
+        <div v-if="zoomPhrase" @click="zoomPhrase = null" class="fixed inset-0 bg-white z-[300] flex flex-col items-center justify-center p-10 text-center">
+            <p class="text-orange-400 font-bold mb-4">「 {{ zoomPhrase.tw }} 」</p>
+            <p class="text-4xl font-black leading-relaxed whitespace-pre-wrap">{{ zoomPhrase.jp }}</p>
+            <p class="mt-20 text-gray-300 text-xs">點擊關閉</p>
+        </div>
+
+        <button v-if="currentTab === 'itinerary'" @click="showModal = true" class="fixed bottom-32 right-8 w-16 h-16 bg-orange-400 text-white rounded-full shadow-xl flex items-center justify-center z-50">
+            <i class="fa-solid fa-plus text-2xl"></i>
+        </button>
+    </div>
+
+    <script>
+        const { createApp, ref, computed } = Vue;
+        createApp({
+            setup() {
+                const currentTab = ref('itinerary');
+                const selectedDate = ref('5/27');
+                const jpy = ref(0);
+                const zoomPhrase = ref(null);
+                const showModal = ref(false), showShopModal = ref(false), showBookingModal = ref(false), showLangModal = ref(false);
+                const isEditMode = ref(false);
+
+                // 版本更新至 V19 以確保圖案載入
+                const itinerary = ref(JSON.parse(localStorage.getItem('ok_itn_v19')) || []);
+                const shoppingList = ref(JSON.parse(localStorage.getItem('ok_shop_v19')) || []);
+                const bookingList = ref(JSON.parse(localStorage.getItem('ok_book_v19')) || []);
+                const allLangData = ref(JSON.parse(localStorage.getItem('ok_lang_v19')) || [
+                    { id: 1, cat: "基本", tw: "謝謝", jp: "ありがとうございます" },
+                    { id: 2, cat: "基本", tw: "不好意思", jp: "すみません" }
+                ]);
+
+                const newItem = ref({ name: '', time: '12:00', icon: 'fa-solid fa-map-pin', driveTime: '' });
+                const newShop = ref({ name: '', price: '', img: '' });
+                const newBook = ref({ type: '🚗 租車', title: '', code: '', dateTime: '' });
+                const customLang = ref({ cat: '', tw: '', jp: '' });
+
+                // 補完後的圖示庫
+                const iconLib = [
+                    'fa-solid fa-map-pin', 'fa-solid fa-plane', 'fa-solid fa-car', 
+                    'fa-solid fa-utensils', 'fa-solid fa-hotel', 'fa-solid fa-camera', 
+                    'fa-solid fa-store', 'fa-solid fa-gas-pump', 'fa-solid fa-shrimp', 
+                    'fa-solid fa-fish', 'fa-solid fa-bridge', 'fa-solid fa-ice-cream', 
+                    'fa-solid fa-landmark', 'fa-solid fa-umbrella-beach', 'fa-solid fa-briefcase'
+                ];
+
+                const groupedPhrases = computed(() => {
+                    return allLangData.value.reduce((acc, p) => {
+                        if (!acc[p.cat]) acc[p.cat] = [];
+                        acc[p.cat].push(p);
+                        return acc;
+                    }, {});
+                });
+
+                const sortedItinerary = computed(() => itinerary.value.filter(i => i.date === selectedDate.value).sort((a,b) => a.time.localeCompare(b.time)));
+
+                const openEditLang = (phrase) => {
+                    isEditMode.value = true;
+                    customLang.value = { ...phrase };
+                    showLangModal.value = true;
+                };
+
+                const saveLang = () => {
+                    if (isEditMode.value) {
+                        const idx = allLangData.value.findIndex(l => l.id === customLang.value.id);
+                        allLangData.value[idx] = { ...customLang.value };
+                    } else {
+                        allLangData.value.push({ ...customLang.value, id: Date.now() });
+                    }
+                    showLangModal.value = false;
+                    persist();
+                };
+
+                const handleFileUpload = (e) => {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => newShop.value.img = ev.target.result;
+                    reader.readAsDataURL(e.target.files[0]);
+                };
+
+                const addItem = (type) => {
+                    if (type === 'itinerary') {
+                        itinerary.value.push({ ...newItem.value, id: Date.now(), date: selectedDate.value });
+                        newItem.value = { name: '', time: '12:00', icon: 'fa-solid fa-map-pin', driveTime: '' };
+                    } else if (type === 'shopping') {
+                        shoppingList.value.push({ ...newShop.value, id: Date.now() });
+                        newShop.value = { name: '', price: '', img: '' };
+                    } else if (type === 'booking') {
+                        let dt = newBook.value.dateTime ? newBook.value.dateTime.replace('T', ' ') : '';
+                        bookingList.value.push({ ...newBook.value, dateTime: dt, id: Date.now() });
+                        newBook.value = { type: '🚗 租車', title: '', code: '', dateTime: '' };
+                    }
+                    showModal.value = showShopModal.value = showBookingModal.value = false;
+                    persist();
+                };
+
+                const deleteItem = (id, type) => {
+                    if (confirm('確定刪除？')) {
+                        if (type === 'itinerary') itinerary.value = itinerary.value.filter(i => i.id !== id);
+                        if (type === 'shopping') shoppingList.value = shoppingList.value.filter(i => i.id !== id);
+                        if (type === 'booking') bookingList.value = bookingList.value.filter(i => i.id !== id);
+                        persist();
+                    }
+                };
+
+                const deleteLanguage = (id) => {
+                    if (confirm('確定刪除語句？')) {
+                        allLangData.value = allLangData.value.filter(p => p.id !== id);
+                        persist();
+                    }
+                };
+
+                const persist = () => {
+                    localStorage.setItem('ok_itn_v19', JSON.stringify(itinerary.value));
+                    localStorage.setItem('ok_shop_v19', JSON.stringify(shoppingList.value));
+                    localStorage.setItem('ok_book_v19', JSON.stringify(bookingList.value));
+                    localStorage.setItem('ok_lang_v19', JSON.stringify(allLangData.value));
+                };
+
+                return {
+                    currentTab, selectedDate, jpy, showModal, showShopModal, showBookingModal, showLangModal, zoomPhrase, isEditMode,
+                    sortedItinerary, shoppingList, bookingList, groupedPhrases, newItem, newShop, newBook, customLang, allLangData,
+                    iconLib, addItem, saveLang, deleteItem, deleteLanguage, handleFileUpload, openEditLang,
+                    days: [{ week: 'Wed', dayNum: '27', date: '5/27' }, { week: 'Thu', dayNum: '28', date: '5/28' }, { week: 'Fri', dayNum: '29', date: '5/29' }, { week: 'Sat', dayNum: '30', date: '5/30' }]
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
