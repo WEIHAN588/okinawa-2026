@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>沖繩自駕 2026 - 最終完整版 V25.2</title>
+    <title>沖繩自駕 2026 - 最終完整版 V25.2 (離線儲存版)</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -93,7 +93,7 @@
 
             <!-- 2. 預訂資訊 -->
             <div v-if="currentTab === 'booking'" class="space-y-4">
-                <div v-for="b in bookings" class="cream-card p-5 border-l-4 border-orange-400 relative">
+                <div v-for="(b, idx) in bookings" :key="idx" class="cream-card p-5 border-l-4 border-orange-400 relative">
                     <div class="flex justify-between items-start mb-2">
                         <span class="text-[9px] font-black bg-orange-50 text-orange-400 px-2 py-0.5 rounded">{{ b.type }}</span>
                         <p class="text-[10px] font-mono font-bold text-blue-500">{{ b.code }}</p>
@@ -104,12 +104,12 @@
                         <p><i class="fa-regular fa-clock mr-1"></i> {{ b.time }}</p>
                         <p><i class="fa-regular fa-user mr-1"></i> {{ b.user }}</p>
                     </div>
-                    <button @click="bookings.splice(bookings.indexOf(b), 1)" class="absolute bottom-4 right-4 text-gray-200"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                    <button @click="bookings.splice(idx, 1)" class="absolute bottom-4 right-4 text-gray-200"><i class="fa-solid fa-trash-can text-xs"></i></button>
                 </div>
                 <button @click="addBooking" class="w-full py-4 border-2 border-dashed border-orange-200 rounded-2xl text-orange-300 text-xs font-bold">+ 新增預訂紀錄</button>
             </div>
 
-            <!-- 3. 語句庫 (已更新 40 句版本) -->
+            <!-- 3. 語句庫 -->
             <div v-if="currentTab === 'language'" class="space-y-8 pb-10">
                 <!-- 翻譯機區塊 -->
                 <div class="cream-card p-5 border-2 border-orange-200 mb-6 bg-orange-50/30">
@@ -221,14 +221,42 @@
     </div>
 
     <script>
-        const { createApp, ref, watch } = Vue;
+        const { createApp, ref, watch, onMounted } = Vue;
         createApp({
             setup() {
+                // --- 原始預設數據 (若本機無資料時使用) ---
+                const defaultItin = {
+                    '5/27': [{time:'07:50', name:'高雄小港機場集合', icon:'fa-solid fa-plane'}, {time:'10:10', name:'虎航 IT 288 起飛', icon:'fa-solid fa-plane-departure'}, {time:'13:00', name:'抵達那霸機場', icon:'fa-solid fa-plane-arrival'}, {time:'14:00', name:'OTS 租車公司', icon:'fa-solid fa-car', drive:'30分'}, {time:'14:40-15:20', name:'A&W 漢堡午餐', icon:'fa-solid fa-burger', drive:'30分'}, {time:'16:00-16:30', name:'波上宮參拜', icon:'fa-solid fa-torii-gate', drive:'15分'}, {time:'16:50-17:20', name:'OKINAWA SHINBOO', icon:'fa-solid fa-bag-shopping', drive:'20分'}, {time:'17:45', name:'SAN-A PARCO CITY 購物', icon:'fa-solid fa-bag-shopping', drive:'65分'}, {time:'晚上', name:'暖暮拉麵 晚餐', icon:'fa-solid fa-utensils'}, {time:'晚上', name:'民宿 Check-in', icon:'fa-solid fa-key'}],
+                    '5/28': [{time:'10:00', name:'民宿退房', icon:'fa-solid fa-door-open', drive:'20分'}, {time:'11:30-12:30', name:'百年古家 阿古豬', icon:'fa-solid fa-utensils', drive:'34分'}, {time:'13:10-15:30', name:'美麗海水族館', icon:'fa-solid fa-fish', drive:'22分'}, {time:'15:55-16:15', name:'SHINMEI COFFEE', icon:'fa-solid fa-mug-hot', drive:'85分'}, {time:'17:40', name:'美國村悠閒逛街', icon:'fa-solid fa-store'}, {time:'19:00', name:'琉球的牛 北谷店', icon:'fa-solid fa-fire-burner', drive:'40分'}, {time:'21:10', name:'東急 Stay Check-in', icon:'fa-solid fa-hotel'}],
+                    '5/29': [{time:'10:30', name:'飯店出發', icon:'fa-solid fa-sun', drive:'20分'}, {time:'10:50-11:50', name:'識名園散策', icon:'fa-solid fa-tree', drive:'20分'}, {time:'12:30-13:50', name:'風林火山 魚魚午餐', icon:'fa-solid fa-shrimp', drive:'30分'}, {time:'14:30-16:30', name:'ASHIBINAA OUTLET', icon:'fa-solid fa-tags', drive:'20分'}, {time:'17:00-18:00', name:'浜寿司 小祿店', icon:'fa-solid fa-fish', drive:'20分'}, {time:'18:25', name:'Apple Park 松尾2丁目第1', icon:'fa-solid fa-car'}, {time:'18:30', name:'國際通', icon:'fa-solid fa-basket-shopping'}],
+                    '5/30': [{time:'09:00', name:'飯店退房', icon:'fa-solid fa-suitcase-rolling', drive:'30分'}, {time:'10:10-10:30', name:'OTS 臨空豐崎店還車', icon:'fa-solid fa-car-side', drive:'25分'}, {time:'11:00', name:'那霸機場免稅店', icon:'fa-solid fa-plane-departure'}, {time:'14:00', name:'虎航 IT 289 返台', icon:'fa-solid fa-plane'}]
+                };
+
+                const defaultBookings = [
+                    {type:'🏨 住宿', title:'AKEMIO HOUSE (Airbnb)', address:'507 Yofuke AKEMIO-HOUSE Nago', time:'5/27', user:'FuYang Cheng'},
+                    {type:'🏨 住宿', title:'東急 Stay 那霸', code:'TC6B9C2BCB149', time:'5/28 - 5/30', user:'WANG WEIHAN'},
+                    {type:'🍽️ 餐廳', title:'百年古家 大家 阿古豬', code:'9QV3HR', time:'5/28 11:30', user:'WANG WEIHAN'},
+                    {type:'🍽️ 餐廳', title:'琉球的牛 北谷店', code:'5JYD2C', time:'5/28 19:00', user:'WANG WEIHAN'}
+                ];
+
+                const defaultLuggage = {
+                    "🪪 重要": [{name:"護照/日文譯本", check:false}, {name:"日幣", check:false}, {name:"保險證明", check:false}],
+                    "🔌 電子": [{name:"行動電源/充電線", check:false}, {name:"網卡/分享器", check:false}, {name:"相機電池", check:false}],
+                    "🧺 用品": [{name:"換洗衣服", check:false}, {name:"防曬用品", check:false}, {name:"常備藥品", check:false}]
+                };
+
+                // --- 響應式狀態初始化 (優先讀取 localStorage) ---
+                const itinData = ref(JSON.parse(localStorage.getItem('ok2026_itin')) || defaultItin);
+                const bookings = ref(JSON.parse(localStorage.getItem('ok2026_bookings')) || defaultBookings);
+                const luggages = ref(JSON.parse(localStorage.getItem('ok2026_luggages')) || defaultLuggage);
+                const shoppingList = ref(JSON.parse(localStorage.getItem('ok2026_shopping')) || []);
+                const jpy = ref(Number(localStorage.getItem('ok2026_jpy')) || 1000);
+
                 const currentTab = ref('itinerary'), selectedDate = ref('5/27');
-                const jpy = ref(1000), zoomedPhrase = ref(null), showModal = ref(false), editIdx = ref(-1);
+                const zoomedPhrase = ref(null), showModal = ref(false), editIdx = ref(-1);
                 const transInput = ref(''), transResult = ref(''), transMode = ref('zh-JP');
                 let debounceTimer = null;
-                const newShop = ref({name:'', img:''}), shoppingList = ref([]), tempItem = ref({icon:'fa-solid fa-location-dot'});
+                const newShop = ref({name:'', img:''}), tempItem = ref({icon:'fa-solid fa-location-dot'});
                 
                 const tabs = [
                     {id:'itinerary', icon:'fa-solid fa-calendar-day'}, {id:'booking', icon:'fa-solid fa-receipt'},
@@ -238,21 +266,6 @@
                 
                 const days = ['5/27', '5/28', '5/29', '5/30'];
                 const iconLibrary = ['fa-solid fa-plane', 'fa-solid fa-car', 'fa-solid fa-utensils', 'fa-solid fa-bag-shopping', 'fa-solid fa-hotel', 'fa-solid fa-torii-gate', 'fa-solid fa-fish', 'fa-solid fa-camera', 'fa-solid fa-mug-hot', 'fa-solid fa-burger', 'fa-solid fa-location-dot', 'fa-solid fa-suitcase-rolling', 'fa-solid fa-sun', 'fa-solid fa-water', 'fa-solid fa-store', 'fa-solid fa-fire-burner', 'fa-solid fa-basket-shopping', 'fa-solid fa-shrimp', 'fa-solid fa-tags', 'fa-solid fa-ice-cream'];
-
-                // 核心數據
-                const itinData = ref({
-                    '5/27': [{time:'07:50', name:'高雄小港機場集合', icon:'fa-solid fa-plane'}, {time:'10:10', name:'虎航 IT 288 起飛', icon:'fa-solid fa-plane-departure'}, {time:'13:00', name:'抵達那霸機場', icon:'fa-solid fa-plane-arrival'}, {time:'14:00', name:'OTS 租車公司', icon:'fa-solid fa-car', drive:'30分'}, {time:'14:40-15:20', name:'A&W 漢堡午餐', icon:'fa-solid fa-burger', drive:'30分'}, {time:'16:00-16:30', name:'波上宮參拜', icon:'fa-solid fa-torii-gate', drive:'15分'}, {time:'16:50-17:20', name:'OKINAWA SHINBOO', icon:'fa-solid fa-bag-shopping', drive:'20分'}, {time:'17:45', name:'SAN-A PARCO CITY 購物', icon:'fa-solid fa-bag-shopping', drive:'65分'}, {time:'晚上', name:'暖暮拉麵 晚餐', icon:'fa-solid fa-utensils'}, {time:'晚上', name:'民宿 Check-in', icon:'fa-solid fa-key'}],
-                    '5/28': [{time:'10:00', name:'民宿退房', icon:'fa-solid fa-door-open', drive:'20分'}, {time:'11:30-12:30', name:'百年古家 阿古豬', icon:'fa-solid fa-utensils', drive:'34分'}, {time:'13:10-15:30', name:'美麗海水族館', icon:'fa-solid fa-fish', drive:'22分'}, {time:'15:55-16:15', name:'SHINMEI COFFEE', icon:'fa-solid fa-mug-hot', drive:'85分'}, {time:'17:40', name:'美國村悠閒逛街', icon:'fa-solid fa-store'}, {time:'19:00', name:'琉球的牛 北谷店', icon:'fa-solid fa-fire-burner', drive:'40分'}, {time:'21:10', name:'東急 Stay Check-in', icon:'fa-solid fa-hotel'}],
-                    '5/29': [{time:'10:30', name:'飯店出發', icon:'fa-solid fa-sun', drive:'20分'}, {time:'10:50-11:50', name:'識名園散策', icon:'fa-solid fa-tree', drive:'20分'}, {time:'12:30-13:50', name:'風林火山 魚魚午餐', icon:'fa-solid fa-shrimp', drive:'30分'}, {time:'14:30-16:30', name:'ASHIBINAA OUTLET', icon:'fa-solid fa-tags', drive:'20分'}, {time:'17:00-18:00', name:'浜寿司 小祿店', icon:'fa-solid fa-fish', drive:'20分'}, {time:'18:25', name:'Apple Park 松尾2丁目第1', icon:'fa-solid fa-car'}, {time:'18:30', name:'國際通', icon:'fa-solid fa-basket-shopping'}],
-                    '5/30': [{time:'09:00', name:'飯店退房', icon:'fa-solid fa-suitcase-rolling', drive:'30分'}, {time:'10:10-10:30', name:'OTS 臨空豐崎店還車', icon:'fa-solid fa-car-side', drive:'25分'}, {time:'11:00', name:'那霸機場免稅店', icon:'fa-solid fa-plane-departure'}, {time:'14:00', name:'虎航 IT 289 返台', icon:'fa-solid fa-plane'}]
-                });
-
-                const bookings = ref([
-                    {type:'🏨 住宿', title:'AKEMIO HOUSE (Airbnb)', address:'507 Yofuke AKEMIO-HOUSE Nago', time:'5/27', user:'FuYang Cheng'},
-                    {type:'🏨 住宿', title:'東急 Stay 那霸', code:'TC6B9C2BCB149', time:'5/28 - 5/30', user:'WANG WEIHAN'},
-                    {type:'🍽️ 餐廳', title:'百年古家 大家 阿古豬', code:'9QV3HR', time:'5/28 11:30', user:'WANG WEIHAN'},
-                    {type:'🍽️ 餐廳', title:'琉球的牛 北谷店', code:'5JYD2C', time:'5/28 19:00', user:'WANG WEIHAN'}
-                ]);
 
                 const phrases = ref({
                     '🍽️ 餐廳': [
@@ -268,9 +281,9 @@
                         {tw:'非常好吃', ruby:'とても<ruby>美味<rt>おい</rt></ruby>しかったです'}
                     ],
                     '🚗 交通': [
-                        {tw:'請加滿(Regular)', ruby:'レギュラー<ruby>満<rt>まん</rt></ruby>タンでお<ruby>願<rt>ねが</rt></ruby>いします'},
+                        {tw:'請加滿(Regular)', ruby:'レギュラー<ruby>滿<rt>まん</rt></ruby>タンでお<ruby>願<rt>ねが</rt></ruby>いします'},
                         {tw:'這裡能停車嗎？', ruby:'ここに<ruby>停車<rt>ていしゃ</rt></ruby>できますか？'},
-                        {tw:'我要還車', ruby:'<ruby>車<rt>くるま</rt></ruby>を<ruby>返却<rt>へんきゃく</rt></ruby>したいです'},
+                        {tw:'我要還車', ruby:'<ruby>車<rt>くるま</rt></ruby>を<ruby>返卻<rt>へんきゃく</rt></ruby>したいです'},
                         {tw:'加油站在哪？', ruby:'ガソリンスタンドはどこですか？'},
                         {tw:'發生事故了', ruby:'<ruby>事故<rt>じこ</rt></ruby>が<ruby>起<rt>お</rt></ruby>きました'},
                         {tw:'這是執照', ruby:'これが<ruby>免許証<rt>めんきょしょう</rt></ruby>です'},
@@ -280,10 +293,10 @@
                         {tw:'請給我收據', ruby:'<ruby>領収書<rt>りょうしゅうしょ</rt></ruby>をください'}
                     ],
                     '🛍️ 購物': [
-                        {tw:'可以退稅嗎？', ruby:'<ruby>免税<rt>めんぜい</rt></ruby>できますか？'},
+                        {tw:'可以退稅嗎？', ruby:'<ruby>免稅<rt>めんぜい</rt></ruby>できますか？'},
                         {tw:'多少錢？', ruby:'いくらですか？'},
                         {tw:'有新的嗎？', ruby:'<ruby>新<rt>あたら</rt></ruby>しいのはありますか？'},
-                        {tw:'可以試穿嗎', ruby:'<ruby>試着<rt>しちゃく</rt></ruby>できますか？'},
+                        {tw:'可以試穿嗎', ruby:'<ruby>試著<rt>しちゃく</rt></ruby>できますか？'},
                         {tw:'我在找這個', ruby:'これを<ruby>探<rt>さが</rt></ruby>しています'},
                         {tw:'有其他顏色嗎', ruby:'<ruby>他<rt>ほか</rt></ruby>の<ruby>色<rt>いろ</rt></ruby>はありますか？'},
                         {tw:'不用袋子', ruby:'<ruby>袋<rt>ふくろ</rt></ruby>はいりません'},
@@ -293,10 +306,10 @@
                     ],
                     '🏨 住宿': [
                         {tw:'我要入住', ruby:'チェックインをお<ruby>願<rt>ねが</rt></ruby>いします'},
-                        {tw:'寄放行李', ruby:'<ruby>荷物<rt>にもつ</rt></ruby>を<ruby>預<rt>あず</rt></ruby>かってもらえますか？'},
+                        {tw:'寄放行李', ruby:'<ruby>行李<rt>にもつ</rt></ruby>を<ruby>預<rt>あず</rt></ruby>かってもらえますか？'},
                         {tw:'WiFi密碼是？', ruby:'WiFiのパスワードは<ruby>何<rt>なに</rt></ruby>ですか？'},
                         {tw:'我要退房', ruby:'チェックアウトをお<ruby>願<rt>ねが</rt></ruby>いします'},
-                        {tw:'冷氣壞了', ruby:'エアコンが<ruby>壊<rt>こわ</rt></ruby>れています'},
+                        {tw:'冷氣壞了', ruby:'エアコンが<ruby>壞<rt>こわ</rt></ruby>れています'},
                         {tw:'幫我叫計程車', ruby:'タクシーを<ruby>呼<rt>よ</rt></ruby>んでください'},
                         {tw:'附近有超商嗎', ruby:'<ruby>近<rt>ちか</rt></ruby>くにコンビニはありますか？'},
                         {tw:'請給我毛巾', ruby:'タオルをください'},
@@ -305,11 +318,12 @@
                     ]
                 });
 
-                const luggages = ref({
-                    "🪪 重要": [{name:"護照/日文譯本", check:false}, {name:"日幣", check:false}, {name:"保險證明", check:false}],
-                    "🔌 電子": [{name:"行動電源/充電線", check:false}, {name:"網卡/分享器", check:false}, {name:"相機電池", check:false}],
-                    "🧺 用品": [{name:"換洗衣服", check:false}, {name:"防曬用品", check:false}, {name:"常備藥品", check:false}]
-                });
+                // --- 數據監聽與本機儲存 ---
+                watch(itinData, (newVal) => localStorage.setItem('ok2026_itin', JSON.stringify(newVal)), { deep: true });
+                watch(bookings, (newVal) => localStorage.setItem('ok2026_bookings', JSON.stringify(newVal)), { deep: true });
+                watch(luggages, (newVal) => localStorage.setItem('ok2026_luggages', JSON.stringify(newVal)), { deep: true });
+                watch(shoppingList, (newVal) => localStorage.setItem('ok2026_shopping', JSON.stringify(newVal)), { deep: true });
+                watch(jpy, (newVal) => localStorage.setItem('ok2026_jpy', newVal));
 
                 // 功能邏輯
                 const swapLanguages = () => { transMode.value = transMode.value === 'zh-JP' ? 'JP-zh' : 'zh-JP'; transInput.value = ''; transResult.value = ''; };
@@ -328,7 +342,17 @@
                     window.speechSynthesis.speak(u);
                 };
 
-                const handleUpload = (e) => { const reader = new FileReader(); reader.onload = (ev) => newShop.value.img = ev.target.result; reader.readAsDataURL(e.target.files[0]); };
+                const handleUpload = (e) => { 
+                    const reader = new FileReader(); 
+                    reader.onload = (ev) => {
+                        // 進行簡單的圖片大小提示（localStorage 有 5MB 限制）
+                        if (ev.target.result.length > 2000000) {
+                            alert("圖片過大，可能會導致儲存失敗，請使用較小的檔案。");
+                        }
+                        newShop.value.img = ev.target.result;
+                    };
+                    reader.readAsDataURL(e.target.files[0]); 
+                };
                 const addShop = () => { if(newShop.value.name) { shoppingList.value.push({...newShop.value}); newShop.value = {name:'', img:''}; } };
                 const openAdd = () => { editIdx.value = -1; tempItem.value = {name:'', time:'', drive:'', icon:'fa-solid fa-location-dot'}; showModal.value = true; };
                 const openEdit = (item, idx) => { editIdx.value = idx; tempItem.value = {...item}; showModal.value = true; };
