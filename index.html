@@ -310,12 +310,12 @@
                     ]
                 });
 
-                const luggages = ref({
-                    "🪪 重要": [{name:"護照", check:false}, {name:"身分證", check:false}, {name:"駕照日文譯本", check:false}, {name:"日幣", check:false}, {name:"旅遊險投保", check:false}]
-                    "🧺 用品": [{name:"盥洗用品", check:false}, {name:"化妝品", check:false}, {name:"卸妝乳+卸妝棉", check:false}, {name:"防曬", check:false}, {name:"面膜", check:false}, {name:"隱形眼鏡/保養液", check:false}, {name:"眼鏡", check:false}]
-                    "💊 藥品": [{name:"胃腸藥", check:false}, {name:"感冒藥/過敏藥", check:false}, {name:"眼藥水", check:false}]
-                    "🔌 電子": [{name:"行動電源(不可託運)", check:false}, {name:"充電頭+線", check:false}, {name:"耳機", check:false}, {name:"網卡", check:false}]
-                });
+               const luggages = ref({
+    "🪪 重要": [{name:"護照", check:false}, {name:"身分證", check:false}, {name:"駕照日文譯本", check:false}, {name:"日幣", check:false}, {name:"旅遊險投保", check:false}],
+    "🧺 用品": [{name:"盥洗用品", check:false}, {name:"化妝品", check:false}, {name:"卸妝乳+卸妝棉", check:false}, {name:"防曬", check:false}, {name:"面膜", check:false}, {name:"隱形眼鏡/保養液", check:false}, {name:"眼鏡", check:false}],
+    "💊 藥品": [{name:"胃腸藥", check:false}, {name:"感冒藥/過敏藥", check:false}, {name:"眼藥水", check:false}],
+    "🔌 電子": [{name:"行動電源(不可託運)", check:false}, {name:"充電頭+線", check:false}, {name:"耳機", check:false}, {name:"網卡", check:false}]
+});
 
                 // --- 翻譯與功能邏輯 ---
                 const swapLanguages = () => { transMode.value = transMode.value === 'zh-JP' ? 'JP-zh' : 'zh-JP'; transInput.value = ''; transResult.value = ''; };
